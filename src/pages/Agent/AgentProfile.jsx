@@ -21,6 +21,7 @@ const AgentProfileForm = () => {
     const dispatch = useDispatch()
     const navigate = useNavigate()
 
+
 // TODO: fix the ui that after agent profile completion the agent will redirect to the agent page
     const user = useSelector(state => state.auth.user);
     console.log(user)

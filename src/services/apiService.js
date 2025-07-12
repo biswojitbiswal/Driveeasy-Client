@@ -116,6 +116,7 @@ export const updateUser = async (body) => {
   }
 };
 
+// For Car
 export const addCar = async (carData) => {
   try {
     return await api.post(API_END_POINTS.CAR.ADD, carData);
@@ -174,6 +175,91 @@ export const updateCarById = async (id, body) => {
   try {
     const url = API_END_POINTS.CAR.UPDATE_BY_ID.replace(":id", id);
     return await api.patch(url, body);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+// For Booking
+export const createBooking = async (body) => {
+  try {
+    return await api.post(API_END_POINTS.BOOKING.CREATE, body, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const getBookingById = async (id, body) => {
+  try {
+    const url = API_END_POINTS.BOOKING.GET.replace(":id", id);
+    return await api.get(url);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const getBookings = async () => {
+  try {
+    return await api.get(API_END_POINTS.BOOKING.GET_ALL);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const updateBoking = async (id, body) => {
+  try {
+    const url = API_END_POINTS.BOOKING.UPDATE_BY_ID.replace(":id", id);
+    return await api.patch(url, body, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const myBookings = async(userId) => {
+  try {
+    const url = API_END_POINTS.BOOKING.MY_BOOKINGS.replace(":userId", userId);
+    return await api.get(url);
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
+
+
+// payment
+export const createPayment = async (body) => {
+  try {
+    return await api.post(API_END_POINTS.PAYMENT.CREATE, body, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
+
+export const paymentVerify = async (body) => {
+  try {
+    return await api.post(API_END_POINTS.PAYMENT.VERIFY, body, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
   } catch (error) {
     console.log(error);
     throw error;

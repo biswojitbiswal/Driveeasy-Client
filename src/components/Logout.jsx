@@ -32,7 +32,7 @@ function Logout() {
     
     return (
         <>
-            <button onClick={handleLogout} className="text-orange-600 hover:text-orange-700 font-medium">Sign Out</button>
+            <button onClick={handleLogout} className="text-gray-600 font-medium hover:text-orange-700 font-medium">Sign Out</button>
         </>
     )
 }

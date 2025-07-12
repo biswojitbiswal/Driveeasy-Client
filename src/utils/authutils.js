@@ -1,6 +1,6 @@
 // authUtils.js
 import Cookies from 'js-cookie';
-import { setAuth } from '../features/auth/authSlice';
+import { setAuth, setAuthInitialized } from '../features/auth/authSlice';
 import { refreshTokenLogin } from '../services/apiService';
 
 export const initializeAuthFromCookies = async(dispatch) => {
@@ -12,7 +12,7 @@ export const initializeAuthFromCookies = async(dispatch) => {
       user,
       token,
       reefreshToken: refToken,
-      isAuthenticated: true
+      isAuthenticated: true,
     }));
   } else if(refToken){
     
@@ -35,4 +35,6 @@ export const initializeAuthFromCookies = async(dispatch) => {
       console.log("Error Refresh Token: ", error)
     }
   }
+
+  dispatch(setAuthInitialized(true));
 };

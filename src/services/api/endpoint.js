@@ -19,6 +19,19 @@ const API_END_POINTS = {
         GET_BY_ID: '/car/:id',
         UPDATE_BY_ID: '/car/:id',
         DELETE_BY_ID: '/car/:id'
+    },
+
+    BOOKING: {
+        CREATE: '/booking',
+        GET: '/booking/:id',
+        GET_ALL: '/booking',
+        UPDATE_BY_ID: '/booking/:id',
+        MY_BOOKINGS: '/booking/user/:userId'
+    },
+
+    PAYMENT: {
+        CREATE: '/payment/create-order',
+        VERIFY: '/payment/verify'
     }
 }
 

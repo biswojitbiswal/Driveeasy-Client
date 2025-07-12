@@ -4,23 +4,29 @@ import { Zap, Fuel, Users, Calendar, Gauge, Star, MapPin, Phone, Mail, ChevronLe
 import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux';
 import { fetchCarById } from '../features/car/carSlice';
+import { toast } from 'react-toastify';
+import { createBooking } from '../services/apiService';
+import { useNavigate } from 'react-router-dom';
 
 const CarDetailsPage = () => {
   const { id } = useParams();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
-    fullName: '',
+    bookingName: '',
     contact: '',
-    drivingLicense: '',
-    dateOfBirth: '',
-    pickupDateTime: '',
-    dropoffDateTime: '',
+    dlNo: '',
+    dob: '',
+    pickupDt: '',
+    dropupDt: '',
     pickupLocation: '',
-    dropoffLocation: ''
+    dropupLocation: '',
+    bookedCarId: id
   });
 
   const dispatch = useDispatch()
+  const navigate = useNavigate()
   const vehicle = useSelector(state => state.cars.car)
 
   useEffect(() => {
@@ -40,49 +46,168 @@ const CarDetailsPage = () => {
   const prevImage = () => {
     setCurrentImageIndex((prev) => (prev - 1 + vehicle.images.length) % vehicle.images.length);
   };
-  // TODO:validate booking form
+
+  // Validation functions
+  const validateField = (name, value) => {
+    let error = '';
+    
+    switch (name) {
+      case 'bookingName':
+        if (!value.trim()) {
+          error = 'Booking name is required';
+        } else if (value.trim().length < 2) {
+          error = 'Booking name must be at least 2 characters';
+        } else if (!/^[a-zA-Z\s]+$/.test(value.trim())) {
+          error = 'Booking name should contain only letters and spaces';
+        }
+        break;
+
+      case 'contact':
+        if (!value.trim()) {
+          error = 'Contact number is required';
+        } else if (!/^[6-9]\d{9}$/.test(value.trim())) {
+          error = 'Please enter a valid 10-digit Indian mobile number';
+        }
+        break;
+
+      case 'dlNo':
+        if (!value.trim()) {
+          error = 'Driving license number is required';
+        } else if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11}$/.test(value.trim().toUpperCase())) {
+          error = 'Please enter a valid driving license number (e.g., DL1420110012345)';
+        }
+        break;
+
+      case 'dob':
+        if (!value) {
+          error = 'Date of birth is required';
+        } else {
+          const today = new Date();
+          const birthDate = new Date(value);
+          let age = today.getFullYear() - birthDate.getFullYear();
+          const monthDiff = today.getMonth() - birthDate.getMonth();
+          
+          if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+          }
+          
+          if (age < 18) {
+            error = 'You must be at least 18 years old to book a car';
+          } else if (age > 100) {
+            error = 'Please enter a valid date of birth';
+          }
+        }
+        break;
+
+      case 'pickupDt':
+        if (!value) {
+          error = 'Pickup date and time is required';
+        } else {
+          const pickupTime = new Date(value);
+          const minPickupTime = new Date();
+          minPickupTime.setHours(minPickupTime.getHours() + 2);
+          
+          if (pickupTime < minPickupTime) {
+            error = 'Pickup time must be at least 2 hours from now';
+          }
+        }
+        break;
+
+      case 'dropupDt':
+        if (!value) {
+          error = 'Dropoff date and time is required';
+        } else if (formData.pickupDt) {
+          const dropoffTime = new Date(value);
+          const pickupTime = new Date(formData.pickupDt);
+          const minDropoffTime = new Date(pickupTime);
+          minDropoffTime.setHours(minDropoffTime.getHours() + 4);
+          
+          if (dropoffTime < minDropoffTime) {
+            error = 'Dropoff time must be at least 4 hours after pickup time';
+          }
+        }
+        break;
+
+      case 'pickupLocation':
+        if (!value.trim()) {
+          error = 'Pickup location is required';
+        } else if (value.trim().length < 3) {
+          error = 'Pickup location must be at least 3 characters';
+        }
+        break;
+
+      case 'dropupLocation':
+        if (!value.trim()) {
+          error = 'Dropoff location is required';
+        } else if (value.trim().length < 3) {
+          error = 'Dropoff location must be at least 3 characters';
+        }
+        break;
+
+      default:
+        break;
+    }
+    
+    return error;
+  };
+
   const getMinPickupTime = () => {
     const now = new Date();
     now.setHours(now.getHours() + 2);
-    now.setMinutes(0); // Reset minutes to 00
+    now.setMinutes(0);
     now.setSeconds(0, 0);
     return now.toISOString().slice(0, 16);
   };
 
-  // Minimum dropoff time: pickup + 4 hours
   const getMinDropoffTime = () => {
-    if (!formData.pickupDateTime) return '';
-    const dropMin = new Date(formData.pickupDateTime);
+    if (!formData.pickupDt) return '';
+    const dropMin = new Date(formData.pickupDt);
     dropMin.setHours(dropMin.getHours() + 4);
-    dropMin.setMinutes(0); // Reset minutes to 00
+    dropMin.setMinutes(0);
     dropMin.setSeconds(0, 0);
     return dropMin.toISOString().slice(0, 16);
+  };
+
+  const getMaxDob = () => {
+    const today = new Date();
+    today.setFullYear(today.getFullYear() - 18);
+    return today.toISOString().slice(0, 10);
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     
+    // Clear previous error for this field
+    setErrors(prev => ({
+      ...prev,
+      [name]: ''
+    }));
+
     // Special handling for pickup date time
-    if (name === 'pickupDateTime') {
-      const minPickupTime = getMinPickupTime();
-      if (value && value < minPickupTime) {
-        alert('Pickup time must be at least 2 hours from now');
-        return;
+    if (name === 'pickupDt') {
+      const error = validateField(name, value);
+      if (error) {
+        setErrors(prev => ({
+          ...prev,
+          [name]: error
+        }));
       }
       
       // Clear dropoff time if pickup time changes
       setFormData(prev => ({
         ...prev,
         [name]: value,
-        dropoffDateTime: '' // Reset dropoff when pickup changes
+        dropupDt: ''
       }));
     } 
     // Special handling for dropoff date time
-    else if (name === 'dropoffDateTime') {
-      const minDropoffTime = getMinDropoffTime();
-      if (value && value < minDropoffTime) {
-        alert('Dropoff time must be at least 4 hours after pickup time');
-        return;
+    else if (name === 'dropupDt') {
+      const error = validateField(name, value);
+      if (error) {
+        setErrors(prev => ({
+          ...prev,
+          [name]: error
+        }));
       }
       
       setFormData(prev => ({
@@ -99,38 +224,60 @@ const CarDetailsPage = () => {
     }
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleBlur = (e) => {
+    const { name, value } = e.target;
+    const error = validateField(name, value);
     
-    // Validate pickup time
-    const minPickupTime = getMinPickupTime();
-    if (formData.pickupDateTime < minPickupTime) {
-      alert('Pickup time must be at least 2 hours from now');
-      return;
-    }
+    setErrors(prev => ({
+      ...prev,
+      [name]: error
+    }));
+  };
+
+  const validateAllFields = () => {
+    const newErrors = {};
     
-    // Validate dropoff time
-    const minDropoffTime = getMinDropoffTime();
-    if (formData.dropoffDateTime < minDropoffTime) {
-      alert('Dropoff time must be at least 4 hours after pickup time');
-      return;
-    }
-    
-    // Calculate booking duration
-    const pickupTime = new Date(formData.pickupDateTime);
-    const dropoffTime = new Date(formData.dropoffDateTime);
-    const durationHours = (dropoffTime - pickupTime) / (1000 * 60 * 60);
-    
-    console.log('Booking data:', {
-      ...formData,
-      bookingDuration: `${durationHours} hours`,
-      totalCost: vehicle.pricePerDay * durationHours
+    Object.keys(formData).forEach(key => {
+      if (key !== 'bookedCarId') {
+        const error = validateField(key, formData[key]);
+        if (error) {
+          newErrors[key] = error;
+        }
+      }
     });
     
-    alert(`Booking confirmed! 
-Duration: ${durationHours} hours
-Total Cost: ₹${(vehicle.pricePerDay * durationHours).toLocaleString('en-IN')}
-You will receive a confirmation email shortly.`);
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async(e) => {
+    e.preventDefault();
+    if (!validateAllFields()) {
+      toast.error('Please fix all validation errors before submitting');
+      return;
+    }
+
+    // Format the data to match your DTO structure
+    const bookingData = {
+      bookingName: formData.bookingName.trim(),
+      bookedCarId: formData.bookedCarId,
+      contact: formData.contact.trim(),
+      dlNo: formData.dlNo.trim().toUpperCase(),
+      dob: new Date(formData.dob).toISOString(),
+      pickupDt: new Date(formData.pickupDt).toISOString(),
+      dropupDt: new Date(formData.dropupDt).toISOString(),
+      pickupLocation: formData.pickupLocation.trim(),
+      dropupLocation: formData.dropupLocation.trim()
+    };
+
+    try {
+      const res = await createBooking(bookingData)
+
+      navigate(`/booking/${res.data.id}`)
+    } catch (error) {
+      console.log(error)
+      throw new error;
+    }
   };
 
   return (
@@ -269,98 +416,184 @@ You will receive a confirmation email shortly.`);
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid md:grid-cols-2 gap-6">
-              {[
-                { name: 'fullName', label: 'Full Name*', type: 'text', placeholder: 'Enter your full name' },
-                { name: 'contact', label: 'Contact Number*', type: 'tel', placeholder: '+91 XXXXX XXXXX' },
-                { name: 'drivingLicense', label: 'Driving License No*', type: 'text', placeholder: 'DL Number' },
-                { name: 'dateOfBirth', label: 'Date of Birth*', type: 'date', placeholder: '' },
-              ].map((field, index) => (
-                <div key={index} className="group">
-                  <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
-                    {field.label}
-                  </label>
-                  <input
-                    type={field.type}
-                    name={field.name}
-                    value={formData[field.name]}
-                    onChange={handleInputChange}
-                    placeholder={field.placeholder}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300"
-                    required
-                  />
-                </div>
-              ))}
+              {/* Booking Name */}
+              <div className="group">
+                <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
+                  Booking Name*
+                </label>
+                <input
+                  type="text"
+                  name="bookingName"
+                  value={formData.bookingName}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter booking name"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
+                    errors.bookingName ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                  required
+                />
+                {errors.bookingName && <p className="text-red-500 text-sm mt-1">{errors.bookingName}</p>}
+              </div>
+
+              {/* Contact */}
+              <div className="group">
+                <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
+                  Contact Number*
+                </label>
+                <input
+                  type="tel"
+                  name="contact"
+                  value={formData.contact}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter 10-digit mobile number"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
+                    errors.contact ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                  required
+                />
+                {errors.contact && <p className="text-red-500 text-sm mt-1">{errors.contact}</p>}
+              </div>
+
+              {/* Driving License */}
+              <div className="group">
+                <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
+                  Driving License No*
+                </label>
+                <input
+                  type="text"
+                  name="dlNo"
+                  value={formData.dlNo}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter DL number (e.g., DL1420110012345)"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
+                    errors.dlNo ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                  required
+                />
+                {errors.dlNo && <p className="text-red-500 text-sm mt-1">{errors.dlNo}</p>}
+              </div>
+
+              {/* Date of Birth */}
+              <div className="group">
+                <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
+                  Date of Birth*
+                </label>
+                <input
+                  type="date"
+                  name="dob"
+                  value={formData.dob}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  max={getMaxDob()}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
+                    errors.dob ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                  required
+                />
+                {errors.dob && <p className="text-red-500 text-sm mt-1">{errors.dob}</p>}
+                <p className="text-xs text-gray-500 mt-1">Must be at least 18 years old</p>
+              </div>
             </div>
             
             {/* Date Time Selection */}
             <div className="grid md:grid-cols-2 gap-6">
+              {/* Pickup Date Time */}
               <div className="group">
                 <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
                   Pickup Date & Time*
                 </label>
                 <input
                   type="datetime-local"
-                  name="pickupDateTime"
-                  value={formData.pickupDateTime}
+                  name="pickupDt"
+                  value={formData.pickupDt}
                   onChange={handleInputChange}
+                  onBlur={handleBlur}
                   min={getMinPickupTime()}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
+                    errors.pickupDt ? 'border-red-500' : 'border-gray-200'
+                  }`}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Minimum 2 hours from now
-                </p>
+                {errors.pickupDt && <p className="text-red-500 text-sm mt-1">{errors.pickupDt}</p>}
+                <p className="text-xs text-gray-500 mt-1">Minimum 2 hours from now</p>
               </div>
 
+              {/* Dropoff Date Time */}
               <div className="group">
                 <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
                   Dropoff Date & Time*
                 </label>
                 <input
                   type="datetime-local"
-                  name="dropoffDateTime"
-                  value={formData.dropoffDateTime}
+                  name="dropupDt"
+                  value={formData.dropupDt}
                   onChange={handleInputChange}
+                  onBlur={handleBlur}
                   min={getMinDropoffTime()}
-                  disabled={!formData.pickupDateTime}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  disabled={!formData.pickupDt}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 disabled:bg-gray-100 disabled:cursor-not-allowed ${
+                    errors.dropupDt ? 'border-red-500' : 'border-gray-200'
+                  }`}
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  Minimum 4 hours after pickup
-                </p>
+                {errors.dropupDt && <p className="text-red-500 text-sm mt-1">{errors.dropupDt}</p>}
+                <p className="text-xs text-gray-500 mt-1">Minimum 4 hours after pickup</p>
               </div>
             </div>
-              {/* TODO: Fix only future date should be show */}
+
+            {/* Location Selection */}
             <div className="grid md:grid-cols-2 gap-6">
-              {[
-                { name: 'pickupLocation', label: 'Pickup Location*', placeholder: 'Enter pickup address' },
-                { name: 'dropoffLocation', label: 'Dropoff Location*', placeholder: 'Enter dropoff address' }
-              ].map((field, index) => (
-                <div key={index} className="group">
-                  <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
-                    {field.label}
-                  </label>
-                  <input
-                    type="text"
-                    name={field.name}
-                    value={formData[field.name]}
-                    onChange={handleInputChange}
-                    placeholder={field.placeholder}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300"
-                    required
-                  />
-                </div>
-              ))}
+              {/* Pickup Location */}
+              <div className="group">
+                <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
+                  Pickup Location*
+                </label>
+                <input
+                  type="text"
+                  name="pickupLocation"
+                  value={formData.pickupLocation}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter pickup address"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
+                    errors.pickupLocation ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                  required
+                />
+                {errors.pickupLocation && <p className="text-red-500 text-sm mt-1">{errors.pickupLocation}</p>}
+              </div>
+
+              {/* Dropoff Location */}
+              <div className="group">
+                <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
+                  Dropoff Location*
+                </label>
+                <input
+                  type="text"
+                  name="dropupLocation"
+                  value={formData.dropupLocation}
+                  onChange={handleInputChange}
+                  onBlur={handleBlur}
+                  placeholder="Enter dropoff address"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
+                    errors.dropupLocation ? 'border-red-500' : 'border-gray-200'
+                  }`}
+                  required
+                />
+                {errors.dropupLocation && <p className="text-red-500 text-sm mt-1">{errors.dropupLocation}</p>}
+              </div>
             </div>
 
             {/* Show booking summary if both times are selected */}
-            {formData.pickupDateTime && formData.dropoffDateTime && (
+            {formData.pickupDt && formData.dropupDt && (
               <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg border border-green-200">
                 <h4 className="font-semibold text-green-800 mb-2">Booking Summary</h4>
                 <div className="text-sm text-green-700 space-y-1">
-                  <p>Duration: {Math.round((new Date(formData.dropoffDateTime) - new Date(formData.pickupDateTime)) / (1000 * 60 * 60))} hours</p>
-                  <p>Total Cost: ₹{((new Date(formData.dropoffDateTime) - new Date(formData.pickupDateTime)) / (1000 * 60 * 60) * vehicle.pricePerDay).toLocaleString('en-IN')}</p>
+                  <p>Duration: {Math.round((new Date(formData.dropupDt) - new Date(formData.pickupDt)) / (1000 * 60 * 60))} hours</p>
+                  <p>Total Cost: ₹{((new Date(formData.dropupDt) - new Date(formData.pickupDt)) / (1000 * 60 * 60) * vehicle.pricePerDay).toLocaleString('en-IN')}</p>
                 </div>
               </div>
             )}

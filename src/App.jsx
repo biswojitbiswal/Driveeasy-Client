@@ -30,6 +30,12 @@ import AgentSetting from './pages/Agent/AgentSetting'
 import Cars from './pages/Cars'
 import CarDetails from './pages/CarDetails'
 import AgentProfileForm from './pages/Agent/AgentProfile'
+import BookingSummary from './pages/BookingSummary'
+import PaymentSuccess from './pages/PaymentSuccess'
+import MyBookings from './pages/MyBookings'
+import BookingDetailed from './pages/BookingDetailed'
+import Profile from './pages/Profile'
+import About from './pages/About'
 
 const AdminProtectedRoute = () => {
   const role = useSelector((state) => state.auth.user?.role);
@@ -56,13 +62,13 @@ const AgentProtectedRoute = () => {
 const UserProtectedRoute = () => {
   const role = useSelector((state) => state.auth.user?.role);
   const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
-
+  
   if (!isAuthenticated || role !== 'USER') {
     return <Navigate to="/signin" replace />;
   }
 
   return <Outlet />;
-}
+};
 
 const AuthOnlyRoute = () => {
   const role = useSelector((state) => state.auth.user?.role);
@@ -173,13 +179,37 @@ const router = createBrowserRouter([
         path: "/cars",
         element: <Cars />
       },
+      {
+        path: "/about",
+        element: <About />
+      },
 
       {
         element: <UserProtectedRoute />,
         children: [
           {
+            path: '/profile',
+            element: <Profile />
+          },
+          {
             path: '/car/:id',
             element: <CarDetails />
+          },
+          {
+            path: '/booking/:id',
+            element: <BookingSummary />
+          },
+          {
+            path: '/payment-success',
+            element: <PaymentSuccess />
+          },
+          {
+            path: '/my-bookings',
+            element: <MyBookings />
+          },
+          {
+            path: '/my-bookings/:bookingId',
+            element: <BookingDetailed />
           }
         ]
       },
@@ -250,7 +280,7 @@ const router = createBrowserRouter([
           },
         ],
       },
-      
+
       {
         path: '*',
         element: <Navigate to="/" replace />,
@@ -261,6 +291,7 @@ const router = createBrowserRouter([
 
 function App() {
   const dispatch = useDispatch();
+  const isInitialized = useSelector(state => state.auth.isInitialized);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -268,6 +299,8 @@ function App() {
     };
     initAuth();
   }, [dispatch]);
+
+  if (!isInitialized) return <div>Loading...</div>;
 
   return <RouterProvider router={router} />
 }
