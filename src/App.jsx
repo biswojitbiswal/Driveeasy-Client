@@ -1,4 +1,5 @@
 import './App.css'
+import 'react-datepicker/dist/react-datepicker.css';
 import {
   createBrowserRouter,
   RouterProvider,
@@ -36,6 +37,8 @@ import MyBookings from './pages/MyBookings'
 import BookingDetailed from './pages/BookingDetailed'
 import Profile from './pages/Profile'
 import About from './pages/About'
+import VerifyingPayment from './pages/VerifyingPayment'
+
 
 const AdminProtectedRoute = () => {
   const role = useSelector((state) => state.auth.user?.role);
@@ -93,6 +96,7 @@ const AuthOnlyRoute = () => {
 
   return <Outlet />;
 }
+
 
 const AgentProfileRoute = () => {
   const role = useSelector((state) => state.auth.user?.role);
@@ -202,6 +206,10 @@ const router = createBrowserRouter([
           {
             path: '/payment-success',
             element: <PaymentSuccess />
+          },
+          {
+            path: '/verifying-payment',
+            element: <VerifyingPayment />
           },
           {
             path: '/my-bookings',

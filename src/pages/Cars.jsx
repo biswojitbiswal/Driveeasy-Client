@@ -4,9 +4,12 @@ import { useSelector } from 'react-redux';
 import { useDispatch } from 'react-redux';
 import { fetchAllCars } from '../features/car/carSlice';
 import { useNavigate } from 'react-router-dom';
+import { toggleLike } from '../services/apiService'
+import { toast } from 'react-toastify';
 
 const CarRentalInventory = () => {
-  const { cars: fetchedCars, total } = useSelector(state => state.cars)
+  const { cars: fetchedCars } = useSelector(state => state.cars)
+  const {total} = useSelector(state => state.cars.cars)
   const dispatch = useDispatch();
 
   const [allCars, setAllCars] = useState([]);
@@ -50,7 +53,6 @@ const CarRentalInventory = () => {
   }), [currentPage, itemsPerPage, debouncedSearchTerm, filters, sortOrder]);
 
 
-
   useEffect(() => {
     const fetchCars = async () => {
       setLoading(true);
@@ -66,19 +68,19 @@ const CarRentalInventory = () => {
   }, [dispatch, queryParams]);
 
 
-
   useEffect(() => {
     setCurrentPage(1);
     setAllCars([]);
   }, [debouncedSearchTerm, filters, sortOrder]);
 
+
   useEffect(() => {
     if (currentPage === 1) {
-      setAllCars(fetchedCars);
+      setAllCars(fetchedCars.data);
     } else {
       setAllCars((prev) => {
         const carMap = new Map();
-        [...prev, ...fetchedCars].forEach((car) => {
+        [...prev, ...fetchedCars.data].forEach((car) => {
           carMap.set(car.id, car); // id should be unique
         });
         return Array.from(carMap.values());
@@ -86,12 +88,6 @@ const CarRentalInventory = () => {
     }
   }, [fetchedCars, currentPage]);
 
-
-  const toggleLike = (id) => {
-    setVehicles(prev => prev.map(vehicle =>
-      vehicle.id === id ? { ...vehicle, liked: !vehicle.liked } : vehicle
-    ));
-  };
 
   const formatPrice = (price) => {
     return `₹${price?.toLocaleString('en-IN')}`;
@@ -126,9 +122,37 @@ const CarRentalInventory = () => {
     navigate(`/car/${vehicleId}`)
   };
 
-  
+  const handleToggleLike = async (e, id) => {
+    e.stopPropagation();
 
-  if (loading && allCars.length === 0) {
+    setAllCars(prevCars =>
+      prevCars?.map(car =>
+        car.id === id ? { ...car, liked: !car.liked } : car
+      )
+    );
+
+    try {
+      const res = await toggleLike({ carId: id });
+
+
+      toast.success(res?.message);
+
+    } catch (error) {
+      setAllCars(prevCars =>
+        prevCars?.map(car =>
+          car.id === id ? { ...car, liked: !car.liked } : car
+        )
+      );
+
+      console.error(error);
+      toast.error("Something went wrong.");
+    }
+  };
+
+
+
+
+  if (loading && allCars?.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-orange-50">
         <div className="w-16 h-16 rounded-full border-4 border-orange-200 border-t-8 border-t-orange-600 animate-spin shadow-lg"></div>
@@ -317,7 +341,7 @@ const CarRentalInventory = () => {
                   {/* Like Button */}
                   <div className="absolute top-3 right-3">
                     <button
-                      onClick={() => toggleLike(vehicle?.id)}
+                      onClick={(e) => handleToggleLike(e, vehicle?.id)}
                       className={`p-2 rounded-full transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-lg backdrop-blur-sm ${vehicle?.liked
                         ? 'bg-red-500 text-white shadow-red-200'
                         : 'bg-white/90 text-gray-600 hover:bg-white'
@@ -415,7 +439,7 @@ const CarRentalInventory = () => {
         </div>
 
         <div className='w-full flex justify-center mt-5'>
-          {allCars.length < total && (
+          {allCars?.length < total && (
             <button
               onClick={() => setCurrentPage(currentPage + 1)}
               disabled={loading}

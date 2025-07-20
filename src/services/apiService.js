@@ -107,6 +107,19 @@ export const resetPassword = async (token, body) => {
   }
 };
 
+export const changePassword = async(body) => {
+  try {
+    return await api.patch(API_END_POINTS.AUTH.CHANGE_PASSWORD, body, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
+
 export const updateUser = async (body) => {
   try {
     return await api.patch(API_END_POINTS.AUTH.UPDATE_USER_ID, body);
@@ -228,7 +241,7 @@ export const updateBoking = async (id, body) => {
   }
 };
 
-export const myBookings = async(userId) => {
+export const myBookings = async (userId) => {
   try {
     const url = API_END_POINTS.BOOKING.MY_BOOKINGS.replace(":userId", userId);
     return await api.get(url);
@@ -236,8 +249,24 @@ export const myBookings = async(userId) => {
     console.log(error);
     throw error;
   }
-}
+};
 
+export const cancelBooking = async (id, body) => {
+  try {
+    const url = API_END_POINTS.BOOKING.CANCEL_BOOKING.replace(
+      ":id",
+      id
+    );
+    return await api.patch(url, body, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+};
 
 // payment
 export const createPayment = async (body) => {
@@ -265,3 +294,32 @@ export const paymentVerify = async (body) => {
     throw error;
   }
 };
+
+
+// For Like
+export const toggleLike = async(body) => {
+  try {
+    return await api.post(API_END_POINTS.LIKE.TOGGLE, body, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}
+
+export const removeFromWishlist = async(id) => {
+  try {
+    const url = API_END_POINTS.LIKE.REMOVE_LIKE.replace(":id", id);
+    return await api.post(url, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
+}

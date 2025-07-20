@@ -26,12 +26,18 @@ const API_END_POINTS = {
         GET: '/booking/:id',
         GET_ALL: '/booking',
         UPDATE_BY_ID: '/booking/:id',
-        MY_BOOKINGS: '/booking/user/:userId'
+        MY_BOOKINGS: '/booking/user/:userId',
+        CANCEL_BOOKING: '/booking/cancel/:id'
     },
 
     PAYMENT: {
         CREATE: '/payment/create-order',
         VERIFY: '/payment/verify'
+    },
+
+    LIKE: {
+        TOGGLE: '/like',
+        REMOVE_LIKE: '/like/:carId'
     }
 }
 

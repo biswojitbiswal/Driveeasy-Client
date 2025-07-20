@@ -154,11 +154,11 @@ const MyBookings = () => {
                                         </div>
                                         <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
                                             <span className="w-4 h-4 text-orange-500">👥</span>
-                                            <span>{booking.bookedCar.seats} Seats</span>
+                                            <span>{booking?.bookedCar?.seats} Seats</span>
                                         </div>
                                         <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
                                             <span className="w-4 h-4 text-orange-500">⚙️</span>
-                                            <span>{booking.bookedCar.transmission}</span>
+                                            <span>{booking?.bookedCar?.transmission}</span>
                                         </div>
                                     </div>
 
@@ -168,28 +168,28 @@ const MyBookings = () => {
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Calendar className="w-4 h-4 text-orange-500" />
                                                 <span className="font-medium">Pickup:</span>
-                                                <span>{formatDate(booking.pickupDt)}</span>
+                                                <span>{formatDate(booking?.pickupDt)}</span>
                                                 <Clock className="w-4 h-4 text-orange-500 ml-2" />
-                                                <span>{formatTime(booking.pickupDt)}</span>
+                                                <span>{formatTime(booking?.pickupDt)}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <Calendar className="w-4 h-4 text-orange-500" />
                                                 <span className="font-medium">Return:</span>
-                                                <span>{formatDate(booking.dropupDt)}</span>
+                                                <span>{formatDate(booking?.dropupDt)}</span>
                                                 <Clock className="w-4 h-4 text-orange-500 ml-2" />
-                                                <span>{formatTime(booking.dropupDt)}</span>
+                                                <span>{formatTime(booking?.dropupDt)}</span>
                                             </div>
                                         </div>
                                         <div className="space-y-2">
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <MapPin className="w-4 h-4 text-orange-500" />
                                                 <span className="font-medium">Pickup:</span>
-                                                <span className="truncate">{booking.pickupLocation}</span>
+                                                <span className="truncate">{booking?.pickupLocation}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-gray-600">
                                                 <MapPin className="w-4 h-4 text-orange-500" />
                                                 <span className="font-medium">Drop:</span>
-                                                <span className="truncate">{booking.dropupLocation}</span>
+                                                <span className="truncate">{booking?.dropupLocation}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -198,13 +198,13 @@ const MyBookings = () => {
                                     <div className="flex justify-between items-center pt-4 border-t border-gray-200">
                                         <div className="flex items-center gap-3">
                                             <img
-                                                src={booking.assignedAgent.profileImg}
-                                                alt={`${booking.assignedAgent.firstName} ${booking.assignedAgent.lastName}`}
+                                                src={booking?.assignedAgent?.profileImg}
+                                                alt={`${booking?.assignedAgent?.firstName} ${booking?.assignedAgent?.lastName}`}
                                                 className="w-8 h-8 rounded-full object-cover"
                                             />
                                             <div>
                                                 <p className="text-sm font-medium text-gray-800">
-                                                    {booking.assignedAgent.firstName} {booking.assignedAgent.lastName}
+                                                    {booking?.assignedAgent?.firstName} {booking?.assignedAgent?.lastName}
                                                 </p>
                                                 <p className="text-xs text-gray-500">Your Agent</p>
                                             </div>

@@ -7,6 +7,7 @@ import { fetchCarById } from '../features/car/carSlice';
 import { toast } from 'react-toastify';
 import { createBooking } from '../services/apiService';
 import { useNavigate } from 'react-router-dom';
+import DatePicker from 'react-datepicker';
 
 const CarDetailsPage = () => {
   const { id } = useParams();
@@ -17,9 +18,9 @@ const CarDetailsPage = () => {
     bookingName: '',
     contact: '',
     dlNo: '',
-    dob: '',
-    pickupDt: '',
-    dropupDt: '',
+    dob: null,
+    pickupDt: null,
+    dropupDt: null,
     pickupLocation: '',
     dropupLocation: '',
     bookedCarId: id
@@ -50,7 +51,7 @@ const CarDetailsPage = () => {
   // Validation functions
   const validateField = (name, value) => {
     let error = '';
-    
+
     switch (name) {
       case 'bookingName':
         if (!value.trim()) {
@@ -73,8 +74,8 @@ const CarDetailsPage = () => {
       case 'dlNo':
         if (!value.trim()) {
           error = 'Driving license number is required';
-        } else if (!/^[A-Z]{2}[0-9]{2}[A-Z0-9]{11}$/.test(value.trim().toUpperCase())) {
-          error = 'Please enter a valid driving license number (e.g., DL1420110012345)';
+        } else if (value.trim().length < 10) {
+          error = 'DL number must be at least 10 characters';
         }
         break;
 
@@ -86,11 +87,11 @@ const CarDetailsPage = () => {
           const birthDate = new Date(value);
           let age = today.getFullYear() - birthDate.getFullYear();
           const monthDiff = today.getMonth() - birthDate.getMonth();
-          
+
           if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
             age--;
           }
-          
+
           if (age < 18) {
             error = 'You must be at least 18 years old to book a car';
           } else if (age > 100) {
@@ -106,7 +107,7 @@ const CarDetailsPage = () => {
           const pickupTime = new Date(value);
           const minPickupTime = new Date();
           minPickupTime.setHours(minPickupTime.getHours() + 2);
-          
+
           if (pickupTime < minPickupTime) {
             error = 'Pickup time must be at least 2 hours from now';
           }
@@ -121,7 +122,7 @@ const CarDetailsPage = () => {
           const pickupTime = new Date(formData.pickupDt);
           const minDropoffTime = new Date(pickupTime);
           minDropoffTime.setHours(minDropoffTime.getHours() + 4);
-          
+
           if (dropoffTime < minDropoffTime) {
             error = 'Dropoff time must be at least 4 hours after pickup time';
           }
@@ -147,36 +148,13 @@ const CarDetailsPage = () => {
       default:
         break;
     }
-    
+
     return error;
-  };
-
-  const getMinPickupTime = () => {
-    const now = new Date();
-    now.setHours(now.getHours() + 2);
-    now.setMinutes(0);
-    now.setSeconds(0, 0);
-    return now.toISOString().slice(0, 16);
-  };
-
-  const getMinDropoffTime = () => {
-    if (!formData.pickupDt) return '';
-    const dropMin = new Date(formData.pickupDt);
-    dropMin.setHours(dropMin.getHours() + 4);
-    dropMin.setMinutes(0);
-    dropMin.setSeconds(0, 0);
-    return dropMin.toISOString().slice(0, 16);
-  };
-
-  const getMaxDob = () => {
-    const today = new Date();
-    today.setFullYear(today.getFullYear() - 18);
-    return today.toISOString().slice(0, 10);
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    
+
     // Clear previous error for this field
     setErrors(prev => ({
       ...prev,
@@ -192,14 +170,14 @@ const CarDetailsPage = () => {
           [name]: error
         }));
       }
-      
+
       // Clear dropoff time if pickup time changes
       setFormData(prev => ({
         ...prev,
         [name]: value,
-        dropupDt: ''
+        dropupDt: null
       }));
-    } 
+    }
     // Special handling for dropoff date time
     else if (name === 'dropupDt') {
       const error = validateField(name, value);
@@ -209,12 +187,12 @@ const CarDetailsPage = () => {
           [name]: error
         }));
       }
-      
+
       setFormData(prev => ({
         ...prev,
         [name]: value
       }));
-    } 
+    }
     // Regular handling for other fields
     else {
       setFormData(prev => ({
@@ -227,7 +205,7 @@ const CarDetailsPage = () => {
   const handleBlur = (e) => {
     const { name, value } = e.target;
     const error = validateField(name, value);
-    
+
     setErrors(prev => ({
       ...prev,
       [name]: error
@@ -236,7 +214,7 @@ const CarDetailsPage = () => {
 
   const validateAllFields = () => {
     const newErrors = {};
-    
+
     Object.keys(formData).forEach(key => {
       if (key !== 'bookedCarId') {
         const error = validateField(key, formData[key]);
@@ -245,12 +223,12 @@ const CarDetailsPage = () => {
         }
       }
     });
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async(e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateAllFields()) {
       toast.error('Please fix all validation errors before submitting');
@@ -263,21 +241,35 @@ const CarDetailsPage = () => {
       bookedCarId: formData.bookedCarId,
       contact: formData.contact.trim(),
       dlNo: formData.dlNo.trim().toUpperCase(),
-      dob: new Date(formData.dob).toISOString(),
-      pickupDt: new Date(formData.pickupDt).toISOString(),
-      dropupDt: new Date(formData.dropupDt).toISOString(),
+      dob: formData.dob.toISOString(),
+      pickupDt: formData.pickupDt.toISOString(),
+      dropupDt: formData.dropupDt.toISOString(),
       pickupLocation: formData.pickupLocation.trim(),
       dropupLocation: formData.dropupLocation.trim()
     };
 
     try {
       const res = await createBooking(bookingData)
-
       navigate(`/booking/${res.data.id}`)
     } catch (error) {
       console.log(error)
-      throw new error;
+      throw new Error(error);
     }
+  };
+
+  // Helper function to get minimum pickup time (2 hours from now)
+  const getMinPickupTime = () => {
+    const now = new Date();
+    now.setHours(now.getHours() + 2);
+    return now;
+  };
+
+  // Helper function to get minimum dropoff time (4 hours after pickup)
+  const getMinDropoffTime = () => {
+    if (!formData.pickupDt) return new Date();
+    const minDropoff = new Date(formData.pickupDt);
+    minDropoff.setHours(minDropoff.getHours() + 4);
+    return minDropoff;
   };
 
   return (
@@ -428,9 +420,8 @@ const CarDetailsPage = () => {
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   placeholder="Enter booking name"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
-                    errors.bookingName ? 'border-red-500' : 'border-gray-200'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${errors.bookingName ? 'border-red-500' : 'border-gray-200'
+                    }`}
                   required
                 />
                 {errors.bookingName && <p className="text-red-500 text-sm mt-1">{errors.bookingName}</p>}
@@ -448,9 +439,8 @@ const CarDetailsPage = () => {
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   placeholder="Enter 10-digit mobile number"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
-                    errors.contact ? 'border-red-500' : 'border-gray-200'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${errors.contact ? 'border-red-500' : 'border-gray-200'
+                    }`}
                   required
                 />
                 {errors.contact && <p className="text-red-500 text-sm mt-1">{errors.contact}</p>}
@@ -468,9 +458,8 @@ const CarDetailsPage = () => {
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   placeholder="Enter DL number (e.g., DL1420110012345)"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
-                    errors.dlNo ? 'border-red-500' : 'border-gray-200'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${errors.dlNo ? 'border-red-500' : 'border-gray-200'
+                    }`}
                   required
                 />
                 {errors.dlNo && <p className="text-red-500 text-sm mt-1">{errors.dlNo}</p>}
@@ -478,69 +467,95 @@ const CarDetailsPage = () => {
 
               {/* Date of Birth */}
               <div className="group">
-                <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
-                  Date of Birth*
-                </label>
-                <input
-                  type="date"
-                  name="dob"
-                  value={formData.dob}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  max={getMaxDob()}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
-                    errors.dob ? 'border-red-500' : 'border-gray-200'
-                  }`}
-                  required
+                <label className="block mb-2 font-semibold text-gray-700">Date of Birth*</label>
+                <DatePicker
+                  selected={formData.dob}
+                  onChange={(date) => {
+                    setFormData(prev => ({ ...prev, dob: date }));
+                    // Clear error when date is selected
+                    setErrors(prev => ({ ...prev, dob: '' }));
+                  }}
+                  onBlur={() => {
+                    const error = validateField("dob", formData.dob);
+                    setErrors(prev => ({ ...prev, dob: error }));
+                  }}
+                  dateFormat="dd/MM/yyyy"
+                  maxDate={new Date(new Date().setFullYear(new Date().getFullYear() - 18))}
+                  showMonthDropdown
+                  showYearDropdown
+                  dropdownMode="select"
+                  placeholderText="Select date of birth"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 transition-all duration-300 ${errors.dob ? 'border-red-500' : 'border-gray-200'
+                    }`}
                 />
                 {errors.dob && <p className="text-red-500 text-sm mt-1">{errors.dob}</p>}
                 <p className="text-xs text-gray-500 mt-1">Must be at least 18 years old</p>
               </div>
             </div>
-            
+
             {/* Date Time Selection */}
             <div className="grid md:grid-cols-2 gap-6">
               {/* Pickup Date Time */}
               <div className="group">
-                <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
+                <label className="block mb-2 font-semibold text-gray-700">
                   Pickup Date & Time*
                 </label>
-                <input
-                  type="datetime-local"
-                  name="pickupDt"
-                  value={formData.pickupDt}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  min={getMinPickupTime()}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
-                    errors.pickupDt ? 'border-red-500' : 'border-gray-200'
-                  }`}
-                  required
+                <DatePicker
+                  selected={formData.pickupDt}
+                  onChange={(date) => {
+                    setFormData(prev => ({ ...prev, pickupDt: date, dropupDt: null }));
+                    // Clear error when date is selected
+                    setErrors(prev => ({ ...prev, pickupDt: '' }));
+                  }}
+                  onBlur={() => {
+                    const error = validateField("pickupDt", formData.pickupDt);
+                    setErrors(prev => ({ ...prev, pickupDt: error }));
+                  }}
+                  showTimeSelect
+                  dateFormat="dd/MM/yyyy h:mm aa"
+                  timeFormat="HH:mm"
+                  timeIntervals={15}
+                  minDate={new Date()}
+                  minTime={getMinPickupTime()}
+                  maxTime={new Date(new Date().setHours(23, 45))}
+                  placeholderText="Select pickup date & time"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${errors.pickupDt ? 'border-red-500' : 'border-gray-200'
+                    }`}
                 />
                 {errors.pickupDt && <p className="text-red-500 text-sm mt-1">{errors.pickupDt}</p>}
-                <p className="text-xs text-gray-500 mt-1">Minimum 2 hours from now</p>
+                <p className="text-xs text-gray-500 mt-1">Must be at least 2 hours from now</p>
               </div>
 
               {/* Dropoff Date Time */}
               <div className="group">
-                <label className="block mb-2 font-semibold text-gray-700 group-focus-within:text-orange-600 transition-colors duration-200">
+                <label className="block mb-2 font-semibold text-gray-700">
                   Dropoff Date & Time*
                 </label>
-                <input
-                  type="datetime-local"
-                  name="dropupDt"
-                  value={formData.dropupDt}
-                  onChange={handleInputChange}
-                  onBlur={handleBlur}
-                  min={getMinDropoffTime()}
+                <DatePicker
+                  selected={formData.dropupDt}
+                  onChange={(date) => {
+                    setFormData(prev => ({ ...prev, dropupDt: date }));
+                    // Clear error when date is selected
+                    setErrors(prev => ({ ...prev, dropupDt: '' }));
+                  }}
+                  onBlur={() => {
+                    const error = validateField("dropupDt", formData.dropupDt);
+                    setErrors(prev => ({ ...prev, dropupDt: error }));
+                  }}
+                  showTimeSelect
+                  dateFormat="dd/MM/yyyy h:mm aa"
+                  timeFormat="HH:mm"
+                  timeIntervals={15}
+                  minDate={formData.pickupDt || new Date()}
+                  minTime={getMinDropoffTime()}
+                  maxTime={new Date(new Date().setHours(23, 45))}
+                  placeholderText="Select dropoff date & time"
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${errors.dropupDt ? 'border-red-500' : 'border-gray-200'
+                    }`}
                   disabled={!formData.pickupDt}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 disabled:bg-gray-100 disabled:cursor-not-allowed ${
-                    errors.dropupDt ? 'border-red-500' : 'border-gray-200'
-                  }`}
-                  required
                 />
                 {errors.dropupDt && <p className="text-red-500 text-sm mt-1">{errors.dropupDt}</p>}
-                <p className="text-xs text-gray-500 mt-1">Minimum 4 hours after pickup</p>
+                <p className="text-xs text-gray-500 mt-1">Must be at least 4 hours after pickup</p>
               </div>
             </div>
 
@@ -558,9 +573,8 @@ const CarDetailsPage = () => {
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   placeholder="Enter pickup address"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
-                    errors.pickupLocation ? 'border-red-500' : 'border-gray-200'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${errors.pickupLocation ? 'border-red-500' : 'border-gray-200'
+                    }`}
                   required
                 />
                 {errors.pickupLocation && <p className="text-red-500 text-sm mt-1">{errors.pickupLocation}</p>}
@@ -578,9 +592,8 @@ const CarDetailsPage = () => {
                   onChange={handleInputChange}
                   onBlur={handleBlur}
                   placeholder="Enter dropoff address"
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${
-                    errors.dropupLocation ? 'border-red-500' : 'border-gray-200'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all duration-300 hover:border-orange-300 ${errors.dropupLocation ? 'border-red-500' : 'border-gray-200'
+                    }`}
                   required
                 />
                 {errors.dropupLocation && <p className="text-red-500 text-sm mt-1">{errors.dropupLocation}</p>}

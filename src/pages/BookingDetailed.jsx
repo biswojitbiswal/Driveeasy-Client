@@ -2,11 +2,14 @@ import React, { useState } from 'react'
 import { useLocation } from 'react-router-dom';
 import { Calendar, Clock, MapPin, Car, User, Phone, Mail, FileText, X, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { cancelBooking } from '../services/apiService';
+import { toast } from 'react-toastify';
 
 const BookingDetailed = () => {
     const location = useLocation();
-    const booking = location.state;
+    const [booking, setBooking] = useState(location.state);
 
+    const [cancelReason, setCancelReason] = useState('');
     const [showCancelModal, setShowCancelModal] = useState(false)
 
     const navigate = useNavigate()
@@ -15,9 +18,27 @@ const BookingDetailed = () => {
     const handleContact = () => {
         window.open(`tel:${booking.assignedAgent.phone}`, '_self');
     };
-// TODO: handle cancel booking
-    const handleCancel = () => {
+    // TODO: handle cancel booking
+    const handleCancel = async (cancelReason) => {
+        try {
+            const res = await cancelBooking(booking.id, {reason: cancelReason})
 
+            toast.success("Booking Cancelled, Refund Successful")
+
+            setBooking(prev => ({
+                ...prev,
+                status: 'CANCELLED',
+                deliveryStatus: 'CANCELLED',
+                paymentStatus: 'REFUNDED',
+                customerOTP: '',
+                cancellationReason: cancelReason
+            }));
+
+            setShowCancelModal(false); // Close modal
+        } catch (error) {
+            console.log(error);
+            throw new error
+        }
     }
 
 
@@ -70,16 +91,19 @@ const BookingDetailed = () => {
                             <h1 className="text-2xl font-bold text-gray-800 mb-2">Booking Details</h1>
                             <p className="text-orange-600 font-medium">#{booking.bookingId}</p>
                         </div>
-                        <div className='flex gap-2'>
-                            <span className={`px-4 py-2 rounded-full text-sm font-medium bg-orange-200 text-gray-800`}>
-                                {booking.customerOTP}
-                            </span>
+                        <div>
+                            <div className='flex gap-2'>
+                            {booking.customerOTP && booking.status !== 'CANCELLED' && (
+                                <span className="px-4 py-2 rounded-full text-sm font-medium bg-orange-200 text-gray-800">
+                                    {booking.customerOTP}
+                                </span>
+                            )}
 
                             <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(booking.status)}`}>
                                 {booking.status}
                             </span>
-
-                            
+                        </div>
+                        <p className="text-orange-600 font-medium">{booking.cancellationReason}</p>
                         </div>
 
                     </div>
@@ -261,31 +285,33 @@ const BookingDetailed = () => {
                                 className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
                             >
                                 <FileText className="w-4 h-4" />
-                                Download Invoice
+                                Download
                             </a>
                         </div>
                     </div>
                 )}
 
                 {/* Action Buttons */}
-                <div className="flex gap-4 justify-center">
-                    <button
-                        onClick={handleContact}
-                        className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors"
-                    >
-                        <Phone className="w-4 h-4" />
-                        Contact Agent
-                    </button>
-                    {booking.status === 'CONFIRM' && (
+                {
+                    booking.status !== 'CANCELLED' && <div className="flex gap-4 justify-center">
                         <button
-                            onClick={() => setShowCancelModal(true)}
-                            className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+                            onClick={handleContact}
+                            className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors"
                         >
-                            <X className="w-4 h-4" />
-                            Cancel Booking
+                            <Phone className="w-4 h-4" />
+                            Contact Agent
                         </button>
-                    )}
-                </div>
+                        {booking.status === 'CONFIRM' && (
+                            <button
+                                onClick={() => setShowCancelModal(true)}
+                                className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 transition-colors"
+                            >
+                                <X className="w-4 h-4" />
+                                Cancel Booking
+                            </button>
+                        )}
+                    </div>
+                }
             </div>
 
             {/* Cancel Modal */}
@@ -293,10 +319,24 @@ const BookingDetailed = () => {
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-lg p-6 max-w-md w-full">
                         <h3 className="text-lg font-semibold text-gray-800 mb-4">Cancel Booking</h3>
-                        <p className="text-gray-600 mb-6">
+                        <p className="text-gray-600 mb-4">
                             Are you sure you want to cancel this booking? This action cannot be undone.
                         </p>
-                        <div className="flex gap-4 justify-end">
+
+                        <label className="block text-orange-700 font-medium mb-2" htmlFor="reason">
+                            Cancellation Reason
+                        </label>
+                        <textarea
+                            id="reason"
+                            name='reason'
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            rows="3"
+                            className="w-full border border-orange-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-orange-500 text-gray-700"
+                            placeholder="Enter reason for cancellation"
+                        />
+
+                        <div className="flex gap-4 justify-end mt-6">
                             <button
                                 onClick={() => setShowCancelModal(false)}
                                 className="px-4 py-2 text-gray-600 hover:text-gray-700"
@@ -304,8 +344,8 @@ const BookingDetailed = () => {
                                 Keep Booking
                             </button>
                             <button
-                                onClick={handleCancel}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                                onClick={() => handleCancel(cancelReason)}
+                                className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
                             >
                                 Cancel Booking
                             </button>
@@ -313,6 +353,7 @@ const BookingDetailed = () => {
                     </div>
                 </div>
             )}
+
         </div>
     );
 };

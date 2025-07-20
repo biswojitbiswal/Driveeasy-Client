@@ -48,6 +48,7 @@ const BookingSummary = () => {
   };
 
   const handlePayNow = async () => {
+    setLoading(true)
     try {
       const res = await loadRazorpayScript();
       if (!res) {
@@ -66,29 +67,13 @@ const BookingSummary = () => {
         name: "DriveEasy",
         description: "Booking Transaction",
         order_id: order.id,
-        handler: async function (response) {
-          try {
-            const verifyRes = await paymentVerify({
+        handler: function (response) {
+          navigate('/verifying-payment', {
+            state: {
+              paymentData: response,
               bookingId: booking.id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-            console.log(verifyRes)
-            if (verifyRes.status === "success") {
-              const { booking, invoice } = verifyRes.data;
-
-              toast.success("Payment Successful!");
-              navigate('/payment-success', {
-                state: { booking, invoice },
-              });
-            } else {
-              toast.error("Payment verification failed.");
-            }
-          } catch (error) {
-            console.error("Payment verification failed", error);
-            toast.error("Payment verification failed. Please contact support.");
-          }
+            },
+          });
         },
 
         prefill: {
@@ -106,6 +91,8 @@ const BookingSummary = () => {
     } catch (error) {
       console.log(error)
       throw new error
+    } finally {
+      setLoading(false)
     }
   };
 
@@ -285,6 +272,7 @@ const BookingSummary = () => {
         {/* Sticky Pay Button */}
         <div className="mt-6 sticky bottom-4">
           <button
+            disabled={loading}
             onClick={handlePayNow}
             className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 px-6 rounded-2xl text-lg transition-all duration-200 shadow-xl hover:shadow-2xl transform hover:scale-[1.02] active:scale-[0.98]"
           >

@@ -6,11 +6,15 @@ export default function PaymentSuccessPage() {
     const location = useLocation();
     const navigate = useNavigate();
     const { booking, invoice } = location.state || {};
+
     console.log(invoice)
     if (!booking || !invoice) {
         return (
-            <div className="flex justify-center items-center h-screen text-xl font-medium">
-                Loading...
+            <div className="min-h-screen bg-gradient-to-br from-orange-50 to-gray-100 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto mb-2"></div>
+                    <p className="text-gray-600 text-sm">Loading...</p>
+                </div>
             </div>
         );
     }
@@ -105,7 +109,7 @@ export default function PaymentSuccessPage() {
                         </div>
                     </div>
                 </div>
-{/* TODO:fix payment success page */}
+                {/* TODO:fix payment success page */}
                 {/* Action Buttons */}
                 <div className="bg-gray-50 px-8 py-6 flex flex-col sm:flex-row justify-center gap-4">
                     <button
